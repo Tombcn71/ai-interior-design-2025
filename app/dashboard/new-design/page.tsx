@@ -1,22 +1,22 @@
-import { getServerSession } from "next-auth"
-import { authConfig } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { getUserCredits } from "@/lib/user"
-import { NewDesignForm } from "@/components/new-design-form"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { getServerSession } from "next-auth";
+import { authConfig } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getUserCredits } from "@/lib/user";
+import { NewDesignForm } from "@/components/new-design-form";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default async function NewDesignPage() {
-  const session = await getServerSession(authConfig)
+  const session = await getServerSession(authConfig);
 
   if (!session) {
-    redirect("/login")
+    redirect("/login");
   }
 
-  const credits = await getUserCredits(session.user.id)
-  const hasCredits = credits > 0
+  const credits = await getUserCredits(session.user.id);
+  const hasCredits = credits > 0;
 
   return (
     <div className="container py-10 px-4 md:px-8 mx-auto">
@@ -29,7 +29,9 @@ export default async function NewDesignPage() {
             <AlertTitle>Insufficient Credits</AlertTitle>
             <AlertDescription>
               You need at least 1 credit to create a new design.{" "}
-              <Link href="/dashboard/buy-credits" className="font-medium underline underline-offset-4">
+              <Link
+                href="/dashboard/buy-credits"
+                className="font-medium underline underline-offset-4">
                 Buy credits
               </Link>
             </AlertDescription>
@@ -39,18 +41,21 @@ export default async function NewDesignPage() {
         <div className="grid gap-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold">Your Available Credits: {credits}</h2>
-              <p className="text-sm text-muted-foreground">Each design costs 1 credit</p>
+              <h2 className="text-xl font-semibold">
+                Your Available Credits: {credits}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Each design costs 1 credit
+              </p>
             </div>
             <Button asChild variant="outline">
               <Link href="/dashboard/buy-credits">Buy More Credits</Link>
             </Button>
           </div>
 
-          <NewDesignForm disabled={!hasCredits} />
+          <NewDesignForm />
         </div>
       </div>
     </div>
-  )
+  );
 }
-
