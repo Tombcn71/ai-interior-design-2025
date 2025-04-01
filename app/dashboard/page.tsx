@@ -1,21 +1,21 @@
-import { getServerSession } from "next-auth"
-import { authConfig } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import Link from "next/link"
-import { getUserCredits } from "@/lib/user"
-import { CreditCard, History, Plus } from "lucide-react"
-import { DesignHistory } from "@/components/design-history"
+import { getServerSession } from "next-auth";
+import { authConfig } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { getUserCredits } from "@/lib/user";
+import { CreditCard, History, Plus } from "lucide-react";
+import { DesignHistory } from "@/components/design-history";
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authConfig)
+  const session = await getServerSession(authConfig);
 
   if (!session) {
-    redirect("/login")
+    redirect("/login");
   }
 
-  const credits = await getUserCredits(session.user.id)
+  const credits = await getUserCredits(session.user.id);
 
   return (
     <div className="container py-10 px-4 md:px-8 mx-auto">
@@ -24,7 +24,7 @@ export default async function DashboardPage() {
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <Button asChild>
             <Link href="/dashboard/new-design">
-              <Plus className="mr-2 h-4 w-4" /> New Design
+              <Plus className="mr-2 h-4 w-4" /> Nieuw Ontwerp
             </Link>
           </Button>
         </div>
@@ -32,39 +32,48 @@ export default async function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Available Credits</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Beschikbare Credits
+              </CardTitle>
               <CreditCard className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{credits}</div>
-              <p className="text-xs text-muted-foreground">Use credits to generate new designs</p>
+              <p className="text-xs text-muted-foreground">
+                Gebruik credits om nieuwe ontwerpen te genereren
+              </p>
               <Button asChild className="mt-4 w-full" variant="outline">
-                <Link href="/dashboard/buy-credits">Buy More Credits</Link>
+                <Link href="/dashboard/buy-credits">Meer Credits Kopen</Link>
               </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Recente Activiteit
+              </CardTitle>
               <History className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{/* This would be dynamic in a real app */}3 Designs</div>
-              <p className="text-xs text-muted-foreground">In the last 30 days</p>
+              <div className="text-2xl font-bold">
+                {/* This would be dynamic in a real app */}3 Ontwerpen
+              </div>
+              <p className="text-xs text-muted-foreground">
+                In de afgelopen 30 dagen
+              </p>
               <Button asChild className="mt-4 w-full" variant="outline">
-                <Link href="/dashboard/history">View History</Link>
+                <Link href="/dashboard/history">Geschiedenis Bekijken</Link>
               </Button>
             </CardContent>
           </Card>
         </div>
 
         <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">Recent Designs</h2>
+          <h2 className="text-xl font-bold mb-4">Recente Ontwerpen</h2>
           <DesignHistory limit={3} />
         </div>
       </div>
     </div>
-  )
+  );
 }
-

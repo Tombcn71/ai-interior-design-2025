@@ -1,23 +1,23 @@
-import { getServerSession } from "next-auth"
-import { authConfig } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { prisma } from "@/lib/prisma"
-import { notFound } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { ArrowLeft, Download, Share } from "lucide-react"
-import Image from "next/image"
-import { DesignStatus } from "@/components/design-status"
+import { getServerSession } from "next-auth";
+import { authConfig } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { notFound } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { ArrowLeft, Download, Share } from "lucide-react";
+import Image from "next/image";
+import { DesignStatus } from "@/components/design-status";
 
 export default async function DesignDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: { id: string };
 }) {
-  const session = await getServerSession(authConfig)
+  const session = await getServerSession(authConfig);
 
   if (!session) {
-    redirect("/login")
+    redirect("/login");
   }
 
   const design = await prisma.design.findUnique({
@@ -25,10 +25,10 @@ export default async function DesignDetailPage({
       id: params.id,
       userId: session.user.id,
     },
-  })
+  });
 
   if (!design) {
-    notFound()
+    notFound();
   }
 
   return (
@@ -38,7 +38,7 @@ export default async function DesignDetailPage({
           <Button asChild variant="ghost" size="icon">
             <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Back</span>
+              <span className="sr-only">Terug</span>
             </Link>
           </Button>
           <h1 className="text-2xl font-bold">{design.name}</h1>
@@ -46,10 +46,10 @@ export default async function DesignDetailPage({
             {design.status === "completed" && (
               <>
                 <Button variant="outline" size="sm">
-                  <Download className="mr-2 h-4 w-4" /> Download
+                  <Download className="mr-2 h-4 w-4" /> Downloaden
                 </Button>
                 <Button variant="outline" size="sm">
-                  <Share className="mr-2 h-4 w-4" /> Share
+                  <Share className="mr-2 h-4 w-4" /> Delen
                 </Button>
               </>
             )}
@@ -61,12 +61,12 @@ export default async function DesignDetailPage({
 
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <h2 className="text-lg font-medium">Original Room</h2>
+              <h2 className="text-lg font-medium">Originele Kamer</h2>
               <div className="relative aspect-video rounded-lg overflow-hidden border">
                 {design.originalImage && (
                   <Image
                     src={design.originalImage || "/placeholder.svg"}
-                    alt="Original room"
+                    alt="Originele kamer"
                     fill
                     className="object-cover"
                   />
@@ -75,23 +75,23 @@ export default async function DesignDetailPage({
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-lg font-medium">Redesigned Room</h2>
+              <h2 className="text-lg font-medium">Herontworpen Kamer</h2>
               <div className="relative aspect-video rounded-lg overflow-hidden border">
                 {design.status === "completed" && design.resultImage ? (
                   <Image
                     src={design.resultImage || "/placeholder.svg"}
-                    alt="Redesigned room"
+                    alt="Herontworpen kamer"
                     fill
                     className="object-cover"
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full bg-muted">
                     {design.status === "processing" ? (
-                      <p>Processing your design...</p>
+                      <p>Je ontwerp wordt verwerkt...</p>
                     ) : design.status === "failed" ? (
-                      <p>Design generation failed</p>
+                      <p>Ontwerp genereren mislukt</p>
                     ) : (
-                      <p>Waiting to start processing</p>
+                      <p>Wachten om verwerking te starten</p>
                     )}
                   </div>
                 )}
@@ -100,25 +100,37 @@ export default async function DesignDetailPage({
           </div>
 
           <div className="grid gap-4">
-            <h2 className="text-lg font-medium">Design Details</h2>
+            <h2 className="text-lg font-medium">Ontwerp Details</h2>
             <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-muted p-4 rounded-lg">
-                <dt className="text-sm font-medium text-muted-foreground">Style</dt>
+                <dt className="text-sm font-medium text-muted-foreground">
+                  Stijl
+                </dt>
                 <dd className="mt-1 text-sm">{design.style}</dd>
               </div>
               <div className="bg-muted p-4 rounded-lg">
-                <dt className="text-sm font-medium text-muted-foreground">Created</dt>
-                <dd className="mt-1 text-sm">{new Date(design.createdAt).toLocaleString()}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">
+                  Gemaakt
+                </dt>
+                <dd className="mt-1 text-sm">
+                  {new Date(design.createdAt).toLocaleString()}
+                </dd>
               </div>
               {design.completedAt && (
                 <div className="bg-muted p-4 rounded-lg">
-                  <dt className="text-sm font-medium text-muted-foreground">Completed</dt>
-                  <dd className="mt-1 text-sm">{new Date(design.completedAt).toLocaleString()}</dd>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Voltooid
+                  </dt>
+                  <dd className="mt-1 text-sm">
+                    {new Date(design.completedAt).toLocaleString()}
+                  </dd>
                 </div>
               )}
               {design.description && (
                 <div className="bg-muted p-4 rounded-lg md:col-span-2">
-                  <dt className="text-sm font-medium text-muted-foreground">Additional Details</dt>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Extra Details
+                  </dt>
                   <dd className="mt-1 text-sm">{design.description}</dd>
                 </div>
               )}
@@ -127,12 +139,11 @@ export default async function DesignDetailPage({
 
           <div className="flex justify-center mt-4">
             <Button asChild>
-              <Link href="/dashboard/new-design">Create Another Design</Link>
+              <Link href="/dashboard/new-design">Maak Nog Een Ontwerp</Link>
             </Button>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
-
