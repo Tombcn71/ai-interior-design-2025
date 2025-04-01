@@ -53,7 +53,7 @@ export default async function NewDesignPage() {
             </Button>
           </div>
 
-          <NewDesignForm />
+          <NewDesignForm disabled={!hasCredits} />
         </div>
       </div>
     </div>
