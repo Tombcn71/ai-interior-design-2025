@@ -15,6 +15,7 @@ model User {
   image         String?
   password      String?
   credits       Int       @default(0)
+  isAdmin       Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -22,6 +23,7 @@ model User {
   sessions      Session[]
   designs       Design[]
   creditPurchases CreditPurchase[]
+  couponUsages  CouponUsage[]
 }
 
 model Account {
@@ -80,10 +82,36 @@ model CreditPurchase {
   id            String    @id @default(cuid())
   userId        String
   amount        Int
-  transactionId String
+  transactionId String    @unique // Maak transactionId uniek
   paymentStatus String
   createdAt     DateTime  @default(now())
 
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Coupon {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discountType  String    // percentage of fixed
+  discountValue Float
+  isActive      Boolean   @default(true)
+  maxUses       Int?
+  usedCount     Int       @default(0)
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  usages        CouponUsage[]
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  purchaseId String
+  createdAt DateTime @default(now())
+
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

@@ -1,24 +1,29 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authConfig } from "@/lib/auth";
+import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import type Stripe from "stripe";
 
-// Vereenvoudigde versie zonder Stripe
+// Definieer de packages
 const PACKAGES = {
   basic: {
-    name: "Basic Package",
+    name: "Basis Pakket",
     credits: 5,
     price: 499, // in cents
+    priceId: process.env.STRIPE_PRICE_BASIC,
   },
   standard: {
-    name: "Standard Package",
+    name: "Standaard Pakket",
     credits: 15,
     price: 1299, // in cents
+    priceId: process.env.STRIPE_PRICE_STANDARD,
   },
   premium: {
-    name: "Premium Package",
+    name: "Premium Pakket",
     credits: 50,
     price: 3999, // in cents
+    priceId: process.env.STRIPE_PRICE_PREMIUM,
   },
 };
 
@@ -38,13 +43,13 @@ export async function POST(req: Request) {
     }
 
     const pkg = PACKAGES[packageId as keyof typeof PACKAGES];
-
-    // Controleer of we een app URL hebben
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-    // Vereenvoudigde implementatie zonder Stripe
-    try {
-      // Voeg credits toe aan de gebruiker
+    // Als Stripe niet beschikbaar is of er geen priceId is, gebruik de fallback
+    if (!stripe || !pkg.priceId) {
+      console.warn("Stripe not available or missing price ID, using fallback");
+
+      // Voeg credits direct toe
       await prisma.user.update({
         where: { id: session.user.id },
         data: { credits: { increment: pkg.credits } },
@@ -63,10 +68,38 @@ export async function POST(req: Request) {
       return NextResponse.json({
         url: `${appUrl}/dashboard/payment-success?session_id=mock_session_id`,
       });
-    } catch (error) {
-      console.error("Error:", error);
+    }
+
+    // Maak een Stripe checkout sessie met correcte types
+    try {
+      // Definieer de checkout parameters
+      const params: Stripe.Checkout.SessionCreateParams = {
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price: pkg.priceId,
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${appUrl}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${appUrl}/dashboard/buy-credits`,
+        metadata: {
+          userId: session.user.id,
+          credits: pkg.credits.toString(),
+          packageId,
+        },
+        allow_promotion_codes: true,
+      };
+
+      // Maak de checkout sessie
+      const checkoutSession = await stripe.checkout.sessions.create(params);
+
+      return NextResponse.json({ url: checkoutSession.url });
+    } catch (stripeError: any) {
+      console.error("Stripe checkout error:", stripeError);
       return NextResponse.json(
-        { message: "Something went wrong" },
+        { message: "Payment processing error" },
         { status: 500 }
       );
     }

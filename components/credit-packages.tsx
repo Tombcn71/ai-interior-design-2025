@@ -54,7 +54,7 @@ export function CreditPackages({ userId }: CreditPackagesProps) {
         throw new Error(data.message || "Checkout sessie aanmaken mislukt");
       }
 
-      // Redirect naar Stripe checkout
+      // Redirect naar Stripe checkout of success page
       window.location.href = data.url;
     } catch (error) {
       toast({
@@ -72,7 +72,9 @@ export function CreditPackages({ userId }: CreditPackagesProps) {
       {packages.map((pkg) => (
         <Card
           key={pkg.id}
-          className={pkg.popular ? "border-primary shadow-md" : ""}>
+          className={
+            pkg.popular ? "border-primary shadow-md relative" : "relative"
+          }>
           {pkg.popular && (
             <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
               Meest Populair
