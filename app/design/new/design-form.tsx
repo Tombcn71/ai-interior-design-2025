@@ -6,21 +6,40 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload, Loader2 } from "lucide-react";
 import Image from "next/image";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface NewDesignFormProps {
   disabled?: boolean;
-  userId: string; // Added userId property to the interface
+  userId: string;
 }
 
+// Define room types
+const roomTypes = [
+  { value: "living_room", label: "Woonkamer" },
+  { value: "bedroom", label: "Slaapkamer" },
+  { value: "kitchen", label: "Keuken" },
+  { value: "bathroom", label: "Badkamer" },
+  { value: "dining_room", label: "Eetkamer" },
+  { value: "office", label: "Thuiskantoor" },
+  { value: "kids_room", label: "Kinderkamer" },
+  { value: "hallway", label: "Gang" },
+  { value: "other", label: "Andere Ruimte" },
+];
+
 export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
-  const [name, setName] = useState("");
+  const [roomType, setRoomType] = useState<string>("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [style, setStyle] = useState("minimalist");
@@ -43,6 +62,15 @@ export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!roomType) {
+      toast({
+        title: "Fout",
+        description: "Selecteer een type ruimte",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!image) {
       toast({
         title: "Fout",
@@ -57,11 +85,11 @@ export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
     try {
       // Create FormData to send the image
       const formData = new FormData();
-      formData.append("name", name);
+      formData.append("roomType", roomType);
       formData.append("style", style);
       formData.append("description", description);
       formData.append("image", image);
-      formData.append("userId", userId); // Use the userId prop
+      formData.append("userId", userId);
 
       const response = await fetch("/api/designs", {
         method: "POST",
@@ -96,15 +124,22 @@ export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
       <div className="grid gap-2">
-        <Label htmlFor="name">Ontwerp Naam</Label>
-        <Input
-          id="name"
-          placeholder="Woonkamer Herontwerp"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          disabled={disabled || isLoading}
-        />
+        <Label htmlFor="roomType">Type Ruimte</Label>
+        <Select
+          value={roomType}
+          onValueChange={setRoomType}
+          disabled={disabled || isLoading}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Selecteer een type ruimte" />
+          </SelectTrigger>
+          <SelectContent>
+            {roomTypes.map((room) => (
+              <SelectItem key={room.value} value={room.value}>
+                {room.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-2">
@@ -229,7 +264,9 @@ export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
         />
       </div>
 
-      <Button type="submit" disabled={disabled || isLoading || !image}>
+      <Button
+        type="submit"
+        disabled={disabled || isLoading || !image || !roomType}>
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verwerken
