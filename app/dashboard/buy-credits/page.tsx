@@ -45,8 +45,10 @@ export default async function BuyCreditsPage() {
         </p>
 
         <StripePricingTable
-          pricingTableId={pricingTableId}
-          publishableKey={publishableKey}
+          pricingTableId={"prctbl_1RA7VmBqJiHgClybiFCg6oTI"}
+          publishableKey={
+            "pk_live_51R8xZaBqJiHgClybecxWOsCD9dAPIaNnvEj6vuEEEADt15b4ByouDBsUGpfwIPTugRUAwx0sonp44rWe5xgcljSg00EvCqraGW"
+          }
           successUrl={`${appUrl}/dashboard?payment=success`}
         />
       </div>
