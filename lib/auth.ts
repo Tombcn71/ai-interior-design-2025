@@ -14,14 +14,7 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      // Explicitly set the callback URL to match your new domain
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
-        },
-      },
+      // Don't explicitly set the callback URL - let NextAuth handle it based on the request
     }),
     GitHubProvider({
       clientId: process.env.GITHUB_ID || "",
@@ -75,20 +68,6 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  // Add more detailed error logging
-  logger: {
-    error(code, metadata) {
-      console.error(`[next-auth][error][${code}]`, metadata);
-    },
-    warn(code) {
-      console.warn(`[next-auth][warn][${code}]`);
-    },
-    debug(code, metadata) {
-      if (process.env.NODE_ENV === "development") {
-        console.debug(`[next-auth][debug][${code}]`, metadata);
-      }
-    },
   },
 };
 
