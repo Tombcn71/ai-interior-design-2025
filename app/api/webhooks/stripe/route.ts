@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { streamToString } from "@/lib/utils";
 import type Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -41,36 +42,46 @@ export async function POST(req: Request) {
       return new NextResponse("Stripe configuration error", { status: 500 });
     }
 
-    // Clone the request to get the body as text
-    const clonedReq = req.clone();
-    const rawBody = await clonedReq.text();
+    // Get the raw body as a string - using a more reliable method
+    let rawBody: string;
+    try {
+      // Use the streamToString utility to get the raw body
+      rawBody = await streamToString(req.body as ReadableStream);
+      console.log("📄 Raw body length:", rawBody.length);
+      // Log a small preview of the body for debugging
+      console.log("📄 Body preview:", rawBody.substring(0, 100) + "...");
+    } catch (error) {
+      console.error("❌ Failed to read request body:", error);
+      return new NextResponse("Failed to read request body", { status: 400 });
+    }
 
     // Get the stripe signature from request headers
-    // Use the request headers directly instead of the Next.js headers() function
     const sig = req.headers.get("stripe-signature");
-
-    // Log some headers for debugging
-    console.log("📝 Stripe signature:", sig);
-    console.log("📝 Content-Type:", req.headers.get("content-type"));
+    console.log("📝 Stripe signature:", sig ? "Present" : "Missing");
 
     if (!sig) {
       console.error("❌ Missing stripe signature");
       return new NextResponse("Missing stripe signature", { status: 400 });
     }
 
+    // Check if webhook secret is configured
+    if (!webhookSecret) {
+      console.error("❌ Missing Stripe webhook secret");
+      return new NextResponse("Missing Stripe webhook secret", { status: 500 });
+    }
+
     let event: Stripe.Event;
 
     try {
-      if (!webhookSecret) {
-        console.error("❌ Missing Stripe webhook secret");
-        throw new Error("Missing Stripe webhook secret");
-      }
-
       console.log("🔐 Verifying webhook signature...");
       event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
       console.log("✅ Webhook signature verified");
     } catch (err: any) {
       console.error(`❌ Webhook signature verification failed: ${err.message}`);
+      // Log more details about the error
+      console.error("Signature:", sig);
+      console.error("Secret length:", webhookSecret.length);
+      console.error("Body length:", rawBody.length);
       return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
     }
 
