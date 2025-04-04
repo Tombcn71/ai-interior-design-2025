@@ -4,206 +4,298 @@ import type React from "react";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Upload, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export default function DesignForm({ userId }: { userId: string }) {
-  const [isUploading, setIsUploading] = useState(false);
+interface NewDesignFormProps {
+  disabled?: boolean;
+}
+
+export function DesignForm({ disabled }: NewDesignFormProps) {
+  const [name, setName] = useState("");
   const [image, setImage] = useState<File | null>(null);
-  const [style, setStyle] = useState("modern");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [style, setStyle] = useState("minimalist");
+  const [description, setDescription] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
   const router = useRouter();
+  const { toast } = useToast();
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!image) {
-      alert("Please select an image to upload");
+      toast({
+        title: "Fout",
+        description: "Upload een afbeelding van je kamer",
+        variant: "destructive",
+      });
       return;
     }
 
-    setIsUploading(true);
+    setIsLoading(true);
 
     try {
-      // Create a FormData object to send the image and style
+      // Create FormData to send the image
       const formData = new FormData();
-      formData.append("image", image);
+      formData.append("name", name);
       formData.append("style", style);
-      formData.append("userId", userId);
+      formData.append("description", description);
+      formData.append("image", image);
 
-      // Send the form data to your API
       const response = await fetch("/api/designs", {
         method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create design");
+        const error = await response.json();
+        throw new Error(error.message || "Ontwerp maken mislukt");
       }
 
       const data = await response.json();
 
-      // Redirect to the design page
-      router.push(`/design/${data.id}`);
+      toast({
+        title: "Succes",
+        description: "Je ontwerp wordt verwerkt",
+      });
+
+      router.push(`/dashboard/designs/${data.id}`);
     } catch (error) {
-      console.error("Error creating design:", error);
-      alert("Failed to create design. Please try again.");
+      toast({
+        title: "Fout",
+        description:
+          error instanceof Error ? error.message : "Er is iets misgegaan",
+        variant: "destructive",
+      });
     } finally {
-      setIsUploading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Card>
-        <CardHeader>
-          <CardTitle>Create New Design</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="upload" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="upload">Upload Photo</TabsTrigger>
-              <TabsTrigger value="style">Choose Style</TabsTrigger>
-            </TabsList>
+    <form onSubmit={handleSubmit} className="grid gap-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="upload">Afbeelding</TabsTrigger>
+          <TabsTrigger value="style">Stijl</TabsTrigger>
+        </TabsList>
 
-            <TabsContent value="upload" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="room-photo">Upload a photo of your room</Label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                  <div className="space-y-1 text-center">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
-                      stroke="currentColor"
-                      fill="none"
-                      viewBox="0 0 48 48"
-                      aria-hidden="true">
-                      <path
-                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <div className="flex text-sm text-gray-600 justify-center">
-                      <label
-                        htmlFor="file-upload"
-                        className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
-                        <span>Upload a file</span>
-                        <input
-                          id="file-upload"
-                          name="file-upload"
-                          type="file"
-                          className="sr-only"
-                          accept="image/*"
-                          onChange={(e) =>
-                            setImage(e.target.files?.[0] || null)
-                          }
-                        />
-                      </label>
-                      <p className="pl-1">or drag and drop</p>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG, GIF up to 10MB
-                    </p>
+        <TabsContent value="details" className="space-y-4 mt-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name">Ontwerp Naam</Label>
+            <Input
+              id="name"
+              placeholder="Woonkamer Herontwerp"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              disabled={disabled || isLoading}
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="description">Extra Details (Optioneel)</Label>
+            <Textarea
+              id="description"
+              placeholder="Beschrijf eventuele specifieke wensen of voorkeuren voor je herontwerp"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={disabled || isLoading}
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={() => setActiveTab("upload")}
+              disabled={disabled || isLoading}>
+              Volgende
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="upload" className="space-y-4 mt-4">
+          <div className="grid gap-2">
+            <Label>Kamer Afbeelding</Label>
+            <Card className="relative border-dashed border-2 hover:border-primary/50 transition-colors">
+              <CardContent className="flex flex-col items-center justify-center p-6">
+                <input
+                  type="file"
+                  id="image"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={handleImageChange}
+                  disabled={disabled || isLoading}
+                />
+                {imagePreview ? (
+                  <div className="relative w-full aspect-video">
+                    <Image
+                      src={imagePreview || "/placeholder.svg"}
+                      alt="Kamer voorbeeld"
+                      fill
+                      className="object-contain"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="absolute bottom-2 right-2"
+                      onClick={() => {
+                        setImage(null);
+                        setImagePreview(null);
+                      }}
+                      disabled={disabled || isLoading}>
+                      Afbeelding Wijzigen
+                    </Button>
                   </div>
-                </div>
-                {image && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Selected file: {image.name}
-                  </p>
+                ) : (
+                  <Label
+                    htmlFor="image"
+                    className="flex flex-col items-center justify-center gap-2 py-10 cursor-pointer w-full">
+                    <Upload className="h-10 w-10 text-muted-foreground" />
+                    <span className="font-medium">Klik om te uploaden</span>
+                    <span className="text-sm text-muted-foreground">
+                      JPG, PNG, WEBP tot 5MB
+                    </span>
+                  </Label>
                 )}
-              </div>
-            </TabsContent>
+              </CardContent>
+            </Card>
+          </div>
 
-            <TabsContent value="style" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label>Choose a design style</Label>
-                <RadioGroup
-                  value={style}
-                  onValueChange={setStyle}
-                  className="grid grid-cols-2 gap-2">
-                  <StyleOption
-                    id="modern"
-                    label="Modern"
-                    isSelected={style === "modern"}
-                  />
-                  <StyleOption
-                    id="minimalist"
-                    label="Minimalist"
-                    isSelected={style === "minimalist"}
-                  />
-                  <StyleOption
-                    id="scandinavian"
-                    label="Scandinavian"
-                    isSelected={style === "scandinavian"}
-                  />
-                  <StyleOption
-                    id="industrial"
-                    label="Industrial"
-                    isSelected={style === "industrial"}
-                  />
-                  <StyleOption
-                    id="bohemian"
-                    label="Bohemian"
-                    isSelected={style === "bohemian"}
-                  />
-                  <StyleOption
-                    id="mid-century"
-                    label="Mid-Century"
-                    isSelected={style === "mid-century"}
-                  />
-                  <StyleOption
-                    id="traditional"
-                    label="Traditional"
-                    isSelected={style === "traditional"}
-                  />
-                  <StyleOption
-                    id="rustic"
-                    label="Rustic"
-                    isSelected={style === "rustic"}
-                  />
-                </RadioGroup>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-        <CardFooter>
-          <Button
-            type="submit"
-            disabled={isUploading || !image}
-            className="w-full">
-            {isUploading ? "Creating Design..." : "Create Design"}
-          </Button>
-        </CardFooter>
-      </Card>
+          <div className="flex justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setActiveTab("details")}
+              disabled={disabled || isLoading}>
+              Terug
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setActiveTab("style")}
+              disabled={disabled || isLoading || !image}>
+              Volgende
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="style" className="space-y-4 mt-4">
+          <div className="grid gap-2">
+            <Label>Ontwerp Stijl</Label>
+            <RadioGroup
+              defaultValue="minimalist"
+              value={style}
+              onValueChange={setStyle}
+              className="grid grid-cols-2 gap-4 sm:grid-cols-3"
+              disabled={disabled || isLoading}>
+              <Label
+                htmlFor="minimalist"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+                <RadioGroupItem
+                  value="minimalist"
+                  id="minimalist"
+                  className="sr-only"
+                />
+                <span className="text-center">Minimalistisch</span>
+              </Label>
+              <Label
+                htmlFor="modern"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+                <RadioGroupItem
+                  value="modern"
+                  id="modern"
+                  className="sr-only"
+                />
+                <span className="text-center">Modern</span>
+              </Label>
+              <Label
+                htmlFor="scandinavian"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+                <RadioGroupItem
+                  value="scandinavian"
+                  id="scandinavian"
+                  className="sr-only"
+                />
+                <span className="text-center">Scandinavisch</span>
+              </Label>
+              <Label
+                htmlFor="industrial"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+                <RadioGroupItem
+                  value="industrial"
+                  id="industrial"
+                  className="sr-only"
+                />
+                <span className="text-center">Industrieel</span>
+              </Label>
+              <Label
+                htmlFor="bohemian"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+                <RadioGroupItem
+                  value="bohemian"
+                  id="bohemian"
+                  className="sr-only"
+                />
+                <span className="text-center">Bohemian</span>
+              </Label>
+              <Label
+                htmlFor="luxury"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+                <RadioGroupItem
+                  value="luxury"
+                  id="luxury"
+                  className="sr-only"
+                />
+                <span className="text-center">Luxe</span>
+              </Label>
+            </RadioGroup>
+          </div>
+
+          <div className="flex justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setActiveTab("upload")}
+              disabled={disabled || isLoading}>
+              Terug
+            </Button>
+            <Button type="submit" disabled={disabled || isLoading || !image}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verwerken
+                </>
+              ) : (
+                "Ontwerp Genereren"
+              )}
+            </Button>
+          </div>
+        </TabsContent>
+      </Tabs>
     </form>
   );
 }
 
-// Style option component
-function StyleOption({
-  id,
-  label,
-  isSelected,
-}: {
-  id: string;
-  label: string;
-  isSelected: boolean;
-}) {
-  return (
-    <div className="flex items-center space-x-2">
-      <RadioGroupItem value={id} id={id} />
-      <Label htmlFor={id} className={isSelected ? "font-medium" : ""}>
-        {label}
-      </Label>
-    </div>
-  );
-}
+export default DesignForm;
