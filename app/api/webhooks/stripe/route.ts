@@ -1,76 +1,83 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { addUserCredits } from "@/lib/user";
 import { prisma } from "@/lib/prisma";
 import type Stripe from "stripe";
 
+// This is your Stripe webhook secret for testing your endpoint locally.
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
 export async function POST(req: Request) {
   try {
-    // Als Stripe niet beschikbaar is, stuur een succesvolle response terug
-    if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
-      console.warn("Stripe not properly configured, returning mock success");
-      return NextResponse.json({ received: true });
+    // Check if stripe is initialized
+    if (!stripe) {
+      console.error("Stripe is not initialized. Check your STRIPE_SECRET_KEY.");
+      return new NextResponse("Stripe configuration error", { status: 500 });
     }
 
-    // Lees de request body
-    const payload = await req.text();
-    const signature = req.headers.get("stripe-signature");
+    const body = await req.text();
+
+    // Get the stripe signature from request headers
+    // Using a different approach to get headers
+    const requestHeaders = req.headers;
+    const signature = requestHeaders.get("stripe-signature");
 
     if (!signature) {
-      console.warn("Missing Stripe signature");
-      return NextResponse.json({ received: true });
+      return new NextResponse("Missing stripe signature", { status: 400 });
     }
 
-    // Verifieer de webhook signature
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(
-        payload,
-        signature,
-        process.env.STRIPE_WEBHOOK_SECRET
-      );
-    } catch (err) {
-      console.error("Webhook signature verification failed:", err);
-      return NextResponse.json({ received: true });
+      if (!webhookSecret) {
+        throw new Error("Missing Stripe webhook secret");
+      }
+
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    } catch (err: any) {
+      console.error(`Webhook signature verification failed: ${err.message}`);
+      return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
     }
 
-    // Verwerk het event
+    // Handle the checkout.session.completed event
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
-      // Controleer of we alle benodigde metadata hebben
-      if (session.metadata?.userId && session.metadata?.credits) {
-        const userId = session.metadata.userId;
-        const credits = Number.parseInt(session.metadata.credits, 10);
+      // Retrieve the session to get line items
+      const checkoutSession = await stripe.checkout.sessions.retrieve(
+        session.id,
+        { expand: ["line_items"] }
+      );
 
-        // Controleer of deze sessie al is verwerkt
-        const existingPurchase = await prisma.creditPurchase.findFirst({
-          where: {
-            transactionId: session.id,
-          },
-        });
-
-        if (!existingPurchase) {
-          // Maak een aankoop record
-          await prisma.creditPurchase.create({
-            data: {
-              userId,
-              amount: credits,
-              transactionId: session.id,
-              paymentStatus: "completed",
-            },
-          });
-
-          // Voeg credits toe aan de gebruiker
-          await addUserCredits(userId, credits);
-        }
+      if (!session?.metadata?.userId || !session?.metadata?.credits) {
+        console.error("Missing metadata in session", session.id);
+        return new NextResponse("Missing metadata", { status: 400 });
       }
+
+      const userId = session.metadata.userId;
+      const credits = Number.parseInt(session.metadata.credits, 10);
+
+      // Add credits to user
+      await prisma.user.update({
+        where: { id: userId },
+        data: { credits: { increment: credits } },
+      });
+
+      // Create purchase record
+      await prisma.creditPurchase.create({
+        data: {
+          userId,
+          amount: credits,
+          transactionId: session.id,
+          paymentStatus: "completed",
+        },
+      });
+
+      console.log(`Added ${credits} credits to user ${userId}`);
     }
 
-    return NextResponse.json({ received: true });
+    return new NextResponse(null, { status: 200 });
   } catch (error) {
-    console.error("Webhook processing error:", error);
-    return NextResponse.json({ received: true });
+    console.error("Webhook error:", error);
+    return new NextResponse("Webhook error", { status: 500 });
   }
 }

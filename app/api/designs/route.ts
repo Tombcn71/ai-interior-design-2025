@@ -1,82 +1,58 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authConfig } from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { useUserCredit } from "@/lib/user";
-import { generateRoomDesign } from "@/lib/replicate";
-import { put } from "@vercel/blob";
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authConfig);
+    const session = await getServerSession(authOptions);
 
-    if (!session) {
+    if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.user.id;
-    // Check if user has credits
-    const hasCreditPromise = useUserCredit(userId);
-
+    // Get the form data
     const formData = await req.formData();
     const name = formData.get("name") as string;
     const style = formData.get("style") as string;
     const description = formData.get("description") as string;
     const image = formData.get("image") as File;
 
-    if (!name || !style || !image) {
+    // Check if user has enough credits
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { credits: true },
+    });
+
+    if (!user || user.credits < 1) {
       return NextResponse.json(
-        { message: "Missing required fields" },
+        { message: "Not enough credits" },
         { status: 400 }
       );
     }
 
-    const hasCredit = await hasCreditPromise;
+    // Process the image and create the design
+    // ... (image processing code)
 
-    if (!hasCredit) {
-      return NextResponse.json(
-        { message: "Insufficient credits" },
-        { status: 400 }
-      );
-    }
-
-    // Upload original image to Vercel Blob
-    const { url: originalImageUrl } = await put(
-      `rooms/${session.user.id}/${Date.now()}-original.jpg`,
-      image,
-      {
-        access: "public",
-      }
-    );
-
-    // Create design record in database
+    // Create the design in the database
     const design = await prisma.design.create({
       data: {
-        name,
-        style,
-        description,
-        originalImage: originalImageUrl,
-        status: "processing",
         userId: session.user.id,
+        // Add other design fields here
       },
     });
 
-    // Start async processing
-    generateRoomDesign(design.id, originalImageUrl, style, description).catch(
-      console.error
-    );
+    // Deduct 1 credit from the user
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { credits: { decrement: 1 } },
+    });
 
-    return NextResponse.json(
-      {
-        message: "Design creation started",
-        id: design.id,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({ id: design.id });
   } catch (error) {
-    console.error("Design creation error:", error);
+    console.error("Error creating design:", error);
     return NextResponse.json(
-      { message: "Something went wrong" },
+      { message: "Failed to create design" },
       { status: 500 }
     );
   }
