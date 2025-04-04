@@ -2,90 +2,91 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
- provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
- provider = "postgresql" // or your actual database provider
- url      = env("DATABASE_URL")
+  provider = "postgresql" // or your actual database provider
+  url      = env("DATABASE_URL")
 }
 
 model User {
- id             String    @id @default(cuid())
- name           String?
- email          String?   @unique
- emailVerified  DateTime?
- image          String?
- password       String?
- credits        Int       @default(0)  // User's credit balance
- isAdmin        Boolean   @default(false)
- createdAt      DateTime  @default(now())
- updatedAt      DateTime  @updatedAt
- accounts       Account[]
- sessions       Session[]
- designs        Design[]
- creditPurchases CreditPurchase[]  // Record of credit purchases
- couponUsages   CouponUsage[]
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
+  password       String?
+  credits        Int       @default(0)  // User's credit balance
+  isAdmin        Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  accounts       Account[]
+  sessions       Session[]
+  designs        Design[]
+  creditPurchases CreditPurchase[]  // Record of credit purchases
+  couponUsages   CouponUsage[]
 }
 
 // Include your other models here...
 model Account {
- id                String  @id @default(cuid())
- userId            String
- type              String
- provider          String
- providerAccountId String
- refresh_token     String? @db.Text
- access_token      String? @db.Text
- expires_at        Int?
- token_type        String?
- scope             String?
- id_token          String? @db.Text
- session_state     String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
- user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
- @@unique([provider, providerAccountId])
+  @@unique([provider, providerAccountId])
 }
 
 model Session {
- id           String   @id @default(cuid())
- sessionToken String   @unique
- userId       String
- expires      DateTime
- user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Add your other models here...
 model Design {
- id          String   @id @default(cuid())
- userId      String
- roomType    String   // Added roomType field
- style       String
- description String?  @db.Text
- imageUrl    String?
- resultUrl   String?
- status      String   @default("pending")
- createdAt   DateTime @default(now())
- updatedAt   DateTime @updatedAt
- // Add other fields as needed
- user        User     @relation(fields: [userId], references: [id])
+  id           String   @id @default(cuid())
+  userId       String
+  roomType     String?  // Type of room (living room, bedroom, etc.)
+  style        String?  // Design style (modern, minimalist, etc.)
+  description  String?  @db.Text
+  imageUrl     String?  // URL of the uploaded room image
+  resultUrl    String?  // URL of the generated design image
+  status       String   @default("pending") // pending, processing, completed, failed
+  predictionId String?  // Replicate prediction ID
+  errorMessage String?  @db.Text // Error message if generation fails
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model CreditPurchase {
- id            String   @id @default(cuid())
- userId        String
- amount        Int
- transactionId String
- paymentStatus String
- createdAt     DateTime @default(now())
- user          User     @relation(fields: [userId], references: [id])
+  id            String   @id @default(cuid())
+  userId        String
+  amount        Int
+  transactionId String
+  paymentStatus String
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
 }
 
 model CouponUsage {
- id        String   @id @default(cuid())
- userId    String
- // Add other fields as needed
- user      User     @relation(fields: [userId], references: [id])
+  id        String   @id @default(cuid())
+  userId    String
+  // Add other fields as needed
+  user      User     @relation(fields: [userId], references: [id])
 }
 

@@ -45,6 +45,7 @@ export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
   const [style, setStyle] = useState("minimalist");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -81,9 +82,10 @@ export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
     }
 
     setIsLoading(true);
+    setGenerationStatus("uploading");
 
     try {
-      // Create FormData to send the image
+      // Step 1: Upload the image and create the design record
       const formData = new FormData();
       formData.append("roomType", roomType);
       formData.append("style", style);
@@ -102,13 +104,34 @@ export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
       }
 
       const data = await response.json();
+      const newDesignId = data.id;
+
+      // Step 2: Start the AI generation process
+      setGenerationStatus("generating");
+
+      const generationResponse = await fetch("/api/replicate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ designId: newDesignId }),
+      });
+
+      if (!generationResponse.ok) {
+        const error = await generationResponse.json();
+        throw new Error(error.error || "Generatie starten mislukt");
+      }
+
+      const generationData = await generationResponse.json();
 
       toast({
         title: "Succes",
-        description: "Je ontwerp wordt verwerkt",
+        description:
+          "Je ontwerp wordt gegenereerd. Je wordt doorgestuurd naar de detailpagina.",
       });
 
-      router.push(`/dashboard/designs/${data.id}`);
+      // Redirect to the design detail page where the user can see the generation progress
+      router.push(`/design/${newDesignId}`);
     } catch (error) {
       toast({
         title: "Fout",
@@ -116,6 +139,7 @@ export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
           error instanceof Error ? error.message : "Er is iets misgegaan",
         variant: "destructive",
       });
+      setGenerationStatus(null);
     } finally {
       setIsLoading(false);
     }
@@ -269,7 +293,10 @@ export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
         disabled={disabled || isLoading || !image || !roomType}>
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verwerken
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {generationStatus === "uploading" && "Uploaden..."}
+            {generationStatus === "generating" && "Ontwerp Genereren..."}
+            {!generationStatus && "Verwerken..."}
           </>
         ) : (
           "Ontwerp Genereren"
