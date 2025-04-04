@@ -74,6 +74,21 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET || process.env.SECRET,
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  // Add more detailed error logging
+  logger: {
+    error(code, metadata) {
+      console.error(`[next-auth][error][${code}]`, metadata);
+    },
+    warn(code) {
+      console.warn(`[next-auth][warn][${code}]`);
+    },
+    debug(code, metadata) {
+      if (process.env.NODE_ENV === "development") {
+        console.debug(`[next-auth][debug][${code}]`, metadata);
+      }
+    },
   },
 };
 
