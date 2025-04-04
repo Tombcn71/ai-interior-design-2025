@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authConfig } from "@/lib/auth";
+import { authOptions } from "@/lib/auth"; // Changed from authConfig to authOptions
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import type Stripe from "stripe";
@@ -29,7 +29,7 @@ const PACKAGES = {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authConfig);
+    const session = await getServerSession(authOptions); // Changed from authConfig to authOptions
 
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
