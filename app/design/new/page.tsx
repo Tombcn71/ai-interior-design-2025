@@ -3,21 +3,19 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import DesignForm from "./design-form";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle } from "lucide-react";
 
-export default async function Dashboard({
-  searchParams,
-}: {
-  searchParams: { payment?: string };
-}) {
+export default async function NewDesignPage() {
+  // Get the session
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id) {
-    return redirect("/login");
+  // If no session, redirect to login
+  if (!session) {
+    return redirect("/login?callbackUrl=/design/new");
   }
 
+  // Get user data including credits
   const user = await prisma.user.findUnique({
     where: {
       id: session.user.id,
@@ -25,101 +23,74 @@ export default async function Dashboard({
     select: {
       id: true,
       credits: true,
-      name: true,
-      email: true,
-      designs: {
-        select: {
-          id: true,
-          // Add other design fields you need
-        },
-        orderBy: {
-          id: "desc",
-        },
-        take: 5,
-      },
     },
   });
 
   if (!user) {
-    return <div>User not found</div>;
+    return redirect("/login?callbackUrl=/design/new&error=user_not_found");
   }
 
-  const showPaymentSuccess = searchParams.payment === "success";
+  // Check if user has enough credits
+  if (user.credits < 1) {
+    return (
+      <div className="container mx-auto p-4">
+        <h1 className="text-2xl font-bold mb-4">Create New Design</h1>
+
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-yellow-400"
+                viewBox="0 0 20 20"
+                fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                You don't have enough credits to create a new design.
+              </p>
+              <p className="mt-2">
+                <Button
+                  asChild
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white">
+                  <Link href="/dashboard/buy-credits">Buy credits</Link>
+                </Button>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <Button asChild variant="outline">
+          <Link href="/dashboard">← Back to Dashboard</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-
-      {showPaymentSuccess && (
-        <Alert className="mb-6 bg-green-50 border-green-200">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertTitle>Betaling succesvol!</AlertTitle>
-          <AlertDescription>
-            Je credits zijn toegevoegd aan je account en zijn direct beschikbaar
-            om te gebruiken.
-          </AlertDescription>
-        </Alert>
-      )}
+      <h1 className="text-2xl font-bold mb-4">Create New Design</h1>
 
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-2">
-          Welkom, {user.name || "Gebruiker"}
-        </h2>
         <p className="mb-4">
-          Je huidige credits:{" "}
-          <span className="font-bold">{user.credits || 0}</span>
+          Your current credits:{" "}
+          <span className="font-bold">{user.credits}</span>
+        </p>
+        <p className="text-sm text-gray-500 mb-6">
+          Creating a new design will use 1 credit.
         </p>
 
-        <div className="mt-4">
-          <Link
-            href="/design/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-            Nieuw Ontwerp Maken
-          </Link>
-
-          <Link
-            href="/dashboard/buy-credits"
-            className="ml-4 bg-gray-100 text-gray-800 px-4 py-2 rounded hover:bg-gray-200">
-            Credits Kopen
-          </Link>
-        </div>
+        <DesignForm userId={user.id} />
       </div>
 
-      {/* Design History Section */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Recente Ontwerpen</h2>
-          <Link
-            href="/dashboard/credit-history"
-            className="text-blue-600 hover:underline text-sm">
-            Bekijk alle ontwerpen
-          </Link>
-        </div>
-
-        {user.designs.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {user.designs.map((design) => (
-              <div key={design.id} className="border rounded-lg p-4">
-                <div className="font-medium mb-2">
-                  Ontwerp ID: {design.id.substring(0, 8)}...
-                </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/design/${design.id}`}>Bekijken</Link>
-                </Button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <p>Je hebt nog geen ontwerpen gemaakt.</p>
-            <Link
-              href="/design/new"
-              className="mt-4 inline-block text-blue-600 hover:underline">
-              Maak je eerste ontwerp
-            </Link>
-          </div>
-        )}
-      </div>
+      <Button asChild variant="outline" className="mt-4">
+        <Link href="/dashboard">← Back to Dashboard</Link>
+      </Button>
     </div>
   );
 }
