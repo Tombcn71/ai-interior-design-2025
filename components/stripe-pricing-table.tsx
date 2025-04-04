@@ -17,16 +17,6 @@ export function StripePricingTable({
   userId,
   userEmail,
 }: StripePricingTableProps) {
-  // Use a more TypeScript-friendly approach with a dynamic element
-  const attributes: Record<string, string> = {
-    "pricing-table-id": pricingTableId,
-    "publishable-key": publishableKey,
-  };
-
-  if (userId) attributes["client-reference-id"] = userId;
-  if (userEmail) attributes["customer-email"] = userEmail;
-  if (successUrl) attributes["success-url"] = successUrl;
-
   return (
     <>
       <Script
