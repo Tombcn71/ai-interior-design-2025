@@ -7,12 +7,16 @@ interface StripePricingTableProps {
   pricingTableId: string;
   publishableKey: string;
   successUrl?: string;
+  userId?: string;
+  userEmail?: string;
 }
 
 export function StripePricingTable({
   pricingTableId,
   publishableKey,
   successUrl,
+  userId,
+  userEmail,
 }: StripePricingTableProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -31,11 +35,18 @@ export function StripePricingTable({
     stripePricingTable.setAttribute("pricing-table-id", pricingTableId);
     stripePricingTable.setAttribute("publishable-key", publishableKey);
 
+    // Add user ID as client reference ID
+    if (userId) {
+      stripePricingTable.setAttribute("client-reference-id", userId);
+    }
+
+    // Add customer email if available
+    if (userEmail) {
+      stripePricingTable.setAttribute("customer-email", userEmail);
+    }
+
+    // Add success URL if available
     if (successUrl) {
-      stripePricingTable.setAttribute(
-        "client-reference-id",
-        `user_${Date.now()}`
-      );
       stripePricingTable.setAttribute("success-url", successUrl);
     }
 
@@ -51,7 +62,7 @@ export function StripePricingTable({
         tables.forEach((el) => el.remove());
       }
     };
-  }, [pricingTableId, publishableKey, successUrl]);
+  }, [pricingTableId, publishableKey, successUrl, userId, userEmail]);
 
   return (
     <>

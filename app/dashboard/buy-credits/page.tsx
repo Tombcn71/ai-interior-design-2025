@@ -45,11 +45,11 @@ export default async function BuyCreditsPage() {
         </p>
 
         <StripePricingTable
-          pricingTableId={"prctbl_1RA7VmBqJiHgClybiFCg6oTI"}
-          publishableKey={
-            "pk_live_51R8xZaBqJiHgClybecxWOsCD9dAPIaNnvEj6vuEEEADt15b4ByouDBsUGpfwIPTugRUAwx0sonp44rWe5xgcljSg00EvCqraGW"
-          }
+          pricingTableId={pricingTableId}
+          publishableKey={publishableKey}
           successUrl={`${appUrl}/dashboard?payment=success`}
+          userId={session.user.id}
+          userEmail={session.user.email || undefined}
         />
       </div>
     </div>
