@@ -13,20 +13,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload, Loader2 } from "lucide-react";
 import Image from "next/image";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface NewDesignFormProps {
   disabled?: boolean;
+  userId: string; // Added userId property to the interface
 }
 
-export function DesignForm({ disabled }: NewDesignFormProps) {
+export default function DesignForm({ disabled, userId }: NewDesignFormProps) {
   const [name, setName] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [style, setStyle] = useState("minimalist");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("details");
   const router = useRouter();
   const { toast } = useToast();
 
@@ -62,6 +61,7 @@ export function DesignForm({ disabled }: NewDesignFormProps) {
       formData.append("style", style);
       formData.append("description", description);
       formData.append("image", image);
+      formData.append("userId", userId); // Use the userId prop
 
       const response = await fetch("/api/designs", {
         method: "POST",
@@ -95,207 +95,149 @@ export function DesignForm({ disabled }: NewDesignFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="upload">Afbeelding</TabsTrigger>
-          <TabsTrigger value="style">Stijl</TabsTrigger>
-        </TabsList>
+      <div className="grid gap-2">
+        <Label htmlFor="name">Ontwerp Naam</Label>
+        <Input
+          id="name"
+          placeholder="Woonkamer Herontwerp"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          disabled={disabled || isLoading}
+        />
+      </div>
 
-        <TabsContent value="details" className="space-y-4 mt-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">Ontwerp Naam</Label>
-            <Input
-              id="name"
-              placeholder="Woonkamer Herontwerp"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
+      <div className="grid gap-2">
+        <Label>Kamer Afbeelding</Label>
+        <Card className="relative border-dashed border-2 hover:border-primary/50 transition-colors">
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <input
+              type="file"
+              id="image"
+              accept="image/*"
+              className="sr-only"
+              onChange={handleImageChange}
               disabled={disabled || isLoading}
             />
-          </div>
+            {imagePreview ? (
+              <div className="relative w-full aspect-video">
+                <Image
+                  src={imagePreview || "/placeholder.svg"}
+                  alt="Kamer voorbeeld"
+                  fill
+                  className="object-contain"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="absolute bottom-2 right-2"
+                  onClick={() => {
+                    setImage(null);
+                    setImagePreview(null);
+                  }}
+                  disabled={disabled || isLoading}>
+                  Afbeelding Wijzigen
+                </Button>
+              </div>
+            ) : (
+              <Label
+                htmlFor="image"
+                className="flex flex-col items-center justify-center gap-2 py-10 cursor-pointer w-full">
+                <Upload className="h-10 w-10 text-muted-foreground" />
+                <span className="font-medium">Klik om te uploaden</span>
+                <span className="text-sm text-muted-foreground">
+                  JPG, PNG, WEBP tot 5MB
+                </span>
+              </Label>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="description">Extra Details (Optioneel)</Label>
-            <Textarea
-              id="description"
-              placeholder="Beschrijf eventuele specifieke wensen of voorkeuren voor je herontwerp"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={disabled || isLoading}
+      <div className="grid gap-2">
+        <Label>Ontwerp Stijl</Label>
+        <RadioGroup
+          defaultValue="minimalist"
+          value={style}
+          onValueChange={setStyle}
+          className="grid grid-cols-2 gap-4 sm:grid-cols-3"
+          disabled={disabled || isLoading}>
+          <Label
+            htmlFor="minimalist"
+            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+            <RadioGroupItem
+              value="minimalist"
+              id="minimalist"
+              className="sr-only"
             />
-          </div>
+            <span className="text-center">Minimalistisch</span>
+          </Label>
+          <Label
+            htmlFor="modern"
+            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+            <RadioGroupItem value="modern" id="modern" className="sr-only" />
+            <span className="text-center">Modern</span>
+          </Label>
+          <Label
+            htmlFor="scandinavian"
+            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+            <RadioGroupItem
+              value="scandinavian"
+              id="scandinavian"
+              className="sr-only"
+            />
+            <span className="text-center">Scandinavisch</span>
+          </Label>
+          <Label
+            htmlFor="industrial"
+            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+            <RadioGroupItem
+              value="industrial"
+              id="industrial"
+              className="sr-only"
+            />
+            <span className="text-center">Industrieel</span>
+          </Label>
+          <Label
+            htmlFor="bohemian"
+            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+            <RadioGroupItem
+              value="bohemian"
+              id="bohemian"
+              className="sr-only"
+            />
+            <span className="text-center">Bohemian</span>
+          </Label>
+          <Label
+            htmlFor="luxury"
+            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+            <RadioGroupItem value="luxury" id="luxury" className="sr-only" />
+            <span className="text-center">Luxe</span>
+          </Label>
+        </RadioGroup>
+      </div>
 
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              onClick={() => setActiveTab("upload")}
-              disabled={disabled || isLoading}>
-              Volgende
-            </Button>
-          </div>
-        </TabsContent>
+      <div className="grid gap-2">
+        <Label htmlFor="description">Extra Details (Optioneel)</Label>
+        <Textarea
+          id="description"
+          placeholder="Beschrijf eventuele specifieke wensen of voorkeuren voor je herontwerp"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={disabled || isLoading}
+        />
+      </div>
 
-        <TabsContent value="upload" className="space-y-4 mt-4">
-          <div className="grid gap-2">
-            <Label>Kamer Afbeelding</Label>
-            <Card className="relative border-dashed border-2 hover:border-primary/50 transition-colors">
-              <CardContent className="flex flex-col items-center justify-center p-6">
-                <input
-                  type="file"
-                  id="image"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={handleImageChange}
-                  disabled={disabled || isLoading}
-                />
-                {imagePreview ? (
-                  <div className="relative w-full aspect-video">
-                    <Image
-                      src={imagePreview || "/placeholder.svg"}
-                      alt="Kamer voorbeeld"
-                      fill
-                      className="object-contain"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="absolute bottom-2 right-2"
-                      onClick={() => {
-                        setImage(null);
-                        setImagePreview(null);
-                      }}
-                      disabled={disabled || isLoading}>
-                      Afbeelding Wijzigen
-                    </Button>
-                  </div>
-                ) : (
-                  <Label
-                    htmlFor="image"
-                    className="flex flex-col items-center justify-center gap-2 py-10 cursor-pointer w-full">
-                    <Upload className="h-10 w-10 text-muted-foreground" />
-                    <span className="font-medium">Klik om te uploaden</span>
-                    <span className="text-sm text-muted-foreground">
-                      JPG, PNG, WEBP tot 5MB
-                    </span>
-                  </Label>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setActiveTab("details")}
-              disabled={disabled || isLoading}>
-              Terug
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setActiveTab("style")}
-              disabled={disabled || isLoading || !image}>
-              Volgende
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="style" className="space-y-4 mt-4">
-          <div className="grid gap-2">
-            <Label>Ontwerp Stijl</Label>
-            <RadioGroup
-              defaultValue="minimalist"
-              value={style}
-              onValueChange={setStyle}
-              className="grid grid-cols-2 gap-4 sm:grid-cols-3"
-              disabled={disabled || isLoading}>
-              <Label
-                htmlFor="minimalist"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
-                <RadioGroupItem
-                  value="minimalist"
-                  id="minimalist"
-                  className="sr-only"
-                />
-                <span className="text-center">Minimalistisch</span>
-              </Label>
-              <Label
-                htmlFor="modern"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
-                <RadioGroupItem
-                  value="modern"
-                  id="modern"
-                  className="sr-only"
-                />
-                <span className="text-center">Modern</span>
-              </Label>
-              <Label
-                htmlFor="scandinavian"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
-                <RadioGroupItem
-                  value="scandinavian"
-                  id="scandinavian"
-                  className="sr-only"
-                />
-                <span className="text-center">Scandinavisch</span>
-              </Label>
-              <Label
-                htmlFor="industrial"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
-                <RadioGroupItem
-                  value="industrial"
-                  id="industrial"
-                  className="sr-only"
-                />
-                <span className="text-center">Industrieel</span>
-              </Label>
-              <Label
-                htmlFor="bohemian"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
-                <RadioGroupItem
-                  value="bohemian"
-                  id="bohemian"
-                  className="sr-only"
-                />
-                <span className="text-center">Bohemian</span>
-              </Label>
-              <Label
-                htmlFor="luxury"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
-                <RadioGroupItem
-                  value="luxury"
-                  id="luxury"
-                  className="sr-only"
-                />
-                <span className="text-center">Luxe</span>
-              </Label>
-            </RadioGroup>
-          </div>
-
-          <div className="flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setActiveTab("upload")}
-              disabled={disabled || isLoading}>
-              Terug
-            </Button>
-            <Button type="submit" disabled={disabled || isLoading || !image}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verwerken
-                </>
-              ) : (
-                "Ontwerp Genereren"
-              )}
-            </Button>
-          </div>
-        </TabsContent>
-      </Tabs>
+      <Button type="submit" disabled={disabled || isLoading || !image}>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verwerken
+          </>
+        ) : (
+          "Ontwerp Genereren"
+        )}
+      </Button>
     </form>
   );
 }
-
-export default DesignForm;
