@@ -3,27 +3,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Replicate from "replicate";
-import type { Design } from "@/types/design";
+
+// Initialize the Replicate client
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN,
+});
 
 export async function POST(req: Request) {
   try {
-    // Check if Replicate API token is set
-    if (!process.env.REPLICATE_API_TOKEN) {
-      console.error("REPLICATE_API_TOKEN is not set");
-      return NextResponse.json(
-        {
-          error: "Replicate API token is not configured",
-          details: "Please set the REPLICATE_API_TOKEN environment variable",
-        },
-        { status: 500 }
-      );
-    }
-
-    // Initialize the Replicate client
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN,
-    });
-
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -42,9 +29,9 @@ export async function POST(req: Request) {
     }
 
     // Get the design from the database
-    const design = (await prisma.design.findUnique({
+    const design = await prisma.design.findUnique({
       where: { id: designId },
-    })) as Design | null;
+    });
 
     if (!design) {
       return NextResponse.json({ error: "Design not found" }, { status: 404 });
@@ -59,27 +46,22 @@ export async function POST(req: Request) {
     }
 
     // Get the input image URL
-    const inputImageUrl = design.imageUrl;
-    if (!inputImageUrl) {
+    const imageUrl = design.imageUrl;
+    if (!imageUrl) {
       return NextResponse.json(
         { error: "Design has no image" },
         { status: 400 }
       );
     }
 
-    console.log("Starting Replicate prediction with image:", inputImageUrl);
-
     // Create the prompt based on design details
-    const prompt = `Interior design in ${
-      design.style || "modern"
-    } style for a ${getRoomTypeName(design.roomType || "living_room")}`;
+    const roomType = getRoomTypeName(design.roomType || "living_room");
+    const style = design.style || "modern";
+    const prompt = `Interior design in ${style} style for a ${roomType}`;
     const additionalPrompt = design.description || "";
-
     const fullPrompt = additionalPrompt
       ? `${prompt}. ${additionalPrompt}`
       : prompt;
-
-    console.log("Using prompt:", fullPrompt);
 
     // Update the design status to processing
     await prisma.design.update({
@@ -89,19 +71,17 @@ export async function POST(req: Request) {
       },
     });
 
-    // Create a prediction using the Replicate client
+    // Create the prediction
     const prediction = await replicate.predictions.create({
       version:
         "76604baddc85b1b4616e1c6475eca080da339c8875bd4996705440484a6eac38",
       input: {
-        image: inputImageUrl,
+        image: imageUrl,
         prompt: fullPrompt,
       },
-      webhook: `${process.env.NEXT_PUBLIC_APP_URL}/api/replicate/webhook`,
-      webhook_events_filter: ["completed", "start"], // Changed from "failed" to valid event types
+      webhook: `https://ai-interior-design-2025-my-team-801094ad.vercel.app/api/replicate/webhook`,
+      webhook_events_filter: ["start", "completed"],
     });
-
-    console.log("Replicate prediction created:", prediction);
 
     // Update the design with the prediction ID
     await prisma.design.update({
@@ -119,31 +99,17 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Error in Replicate API route:", error);
-
-    // Check if it's a Replicate API error
-    if (error instanceof Error && error.message.includes("Replicate")) {
-      return NextResponse.json(
-        {
-          error: "Replicate API error",
-          details: error.message,
-          stack: error.stack,
-        },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json(
       {
-        error: "Failed to process request",
+        error: "Failed to generate design",
         details: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );
   }
 }
 
-// Helper function to get the English name for a room type (for the AI prompt)
+// Helper function to get the English name for a room type
 function getRoomTypeName(roomType: string): string {
   const roomTypes: Record<string, string> = {
     living_room: "living room",
