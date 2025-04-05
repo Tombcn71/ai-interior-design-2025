@@ -4,9 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Design } from "@/types/design";
 
-// Define the Replicate API URL
-const REPLICATE_API_URL = "https://api.replicate.com/v1/predictions";
-
 export async function POST(req: Request) {
   try {
     // Check authentication
@@ -43,7 +40,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get the input image URL (assuming it's stored in the design record)
+    // Get the input image URL
     const inputImageUrl = design.imageUrl;
     if (!inputImageUrl) {
       return NextResponse.json(
@@ -53,9 +50,11 @@ export async function POST(req: Request) {
     }
 
     // Prepare the payload for Replicate
+    // Using the interior design model
     const payload = {
+      // Use the correct model version for interior design
       version:
-        "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b", // Example model version
+        "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
       input: {
         image: inputImageUrl,
         prompt: `Interior design in ${
@@ -63,10 +62,12 @@ export async function POST(req: Request) {
         } style for a ${getRoomTypeName(design.roomType || "living_room")}`,
         additional_prompt: design.description || "",
       },
+      webhook: `${process.env.NEXT_PUBLIC_APP_URL}/api/replicate/webhook`,
+      webhook_events_filter: ["completed", "failed"],
     };
 
     // Call the Replicate API
-    const response = await fetch(REPLICATE_API_URL, {
+    const response = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
       headers: {
         Authorization: `Token ${process.env.REPLICATE_API_TOKEN}`,

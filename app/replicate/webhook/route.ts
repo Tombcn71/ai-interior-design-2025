@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { put } from "@/lib/blob";
+import { put } from "@vercel/blob";
 import type { Design } from "@/types/design";
 
 export async function POST(req: Request) {
