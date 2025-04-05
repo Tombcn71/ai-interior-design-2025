@@ -30,20 +30,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create a unique filename with simple naming
-    const timestamp = Date.now();
-    const fileName = file.name.replace(/\s+/g, "-");
-    const pathname = `rooms/${session.user.id}/${timestamp}-${fileName}`;
-
     // Upload to Vercel Blob
-    const blob = await put(pathname, file, {
-      access: "public",
-    });
+    const blob = await put(
+      `rooms/${session.user.id}/${Date.now()}-${file.name}`,
+      file,
+      {
+        access: "public",
+      }
+    );
 
-    console.log("Blob upload successful:", {
-      url: blob.url,
-      pathname: blob.pathname,
-    });
+    console.log("Blob upload successful:", blob);
 
     // Create a design record in the database
     const design = await prisma.design.create({
