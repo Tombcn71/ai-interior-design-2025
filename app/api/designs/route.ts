@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { put } from "@/lib/blob";
+import { uploadToBlob } from "@/lib/blob-client";
 
 export async function POST(req: Request) {
+  console.log("Designs API called");
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -56,25 +58,52 @@ export async function POST(req: Request) {
 
       console.log("Uploading to Vercel Blob:", filename);
 
-      const blob = await put(filename, image, {
-        access: "public",
-        addRandomSuffix: true, // Add random suffix to avoid name collisions
-      });
+      // Use our new Blob client
+      const blob = await uploadToBlob(filename, image);
 
       console.log("Blob upload successful:", blob);
       imageUrl = blob.url;
     } catch (blobError) {
       console.error("Error uploading to Vercel Blob:", blobError);
 
-      // Return an error response
-      return NextResponse.json(
-        {
-          message: "Failed to upload image",
-          error:
-            blobError instanceof Error ? blobError.message : String(blobError),
-        },
-        { status: 500 }
-      );
+      // Create a fallback URL (data URL) for development
+      if (process.env.NODE_ENV === "development") {
+        console.log("Creating fallback data URL for development");
+        try {
+          const buffer = await image.arrayBuffer();
+          const base64 = Buffer.from(buffer).toString("base64");
+          imageUrl = `data:${image.type};base64,${base64}`;
+          console.log("Created fallback data URL");
+        } catch (fallbackError) {
+          console.error("Error creating fallback URL:", fallbackError);
+          return NextResponse.json(
+            {
+              message: "Failed to upload image and create fallback",
+              error:
+                blobError instanceof Error
+                  ? blobError.message
+                  : String(blobError),
+              fallbackError:
+                fallbackError instanceof Error
+                  ? fallbackError.message
+                  : String(fallbackError),
+            },
+            { status: 500 }
+          );
+        }
+      } else {
+        // In production, return an error
+        return NextResponse.json(
+          {
+            message: "Failed to upload image",
+            error:
+              blobError instanceof Error
+                ? blobError.message
+                : String(blobError),
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // Create the design in the database
