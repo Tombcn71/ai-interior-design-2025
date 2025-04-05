@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { put } from "@vercel/blob";
 import type { Design } from "@/types/design";
 
 export async function POST(req: Request) {
   try {
     // Parse the webhook payload
     const payload = await req.json();
-
-    // Verify the webhook signature if Replicate provides one
-    // This would require additional implementation
 
     // Extract the prediction details
     const { id: predictionId, status, output, error } = payload;
@@ -35,13 +33,43 @@ export async function POST(req: Request) {
       const outputUrl = output?.[0] || null;
 
       if (outputUrl) {
-        await prisma.design.update({
-          where: { id: design.id },
-          data: {
-            status: "completed",
-            resultUrl: outputUrl,
-          },
-        });
+        // Store the result in Vercel Blob for persistence
+        try {
+          // Fetch the image from the Replicate URL
+          const response = await fetch(outputUrl);
+          if (!response.ok)
+            throw new Error(`Failed to fetch image: ${response.statusText}`);
+
+          const imageBlob = await response.blob();
+
+          // Upload to Vercel Blob
+          const blob = await put(
+            `results/${design.userId}/${design.id}.jpg`,
+            imageBlob,
+            {
+              access: "public",
+            }
+          );
+
+          // Update the design with our own stored URL
+          await prisma.design.update({
+            where: { id: design.id },
+            data: {
+              status: "completed",
+              resultUrl: blob.url,
+            },
+          });
+        } catch (blobError) {
+          console.error("Error storing result in Vercel Blob:", blobError);
+          // Fallback to using the Replicate URL directly
+          await prisma.design.update({
+            where: { id: design.id },
+            data: {
+              status: "completed",
+              resultUrl: outputUrl,
+            },
+          });
+        }
       }
     } else if (status === "failed") {
       await prisma.design.update({

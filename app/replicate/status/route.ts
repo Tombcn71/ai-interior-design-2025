@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { put } from "@vercel/blob";
 import type { Design } from "@/types/design";
 
 export async function GET(req: Request) {
@@ -83,21 +84,51 @@ export async function GET(req: Request) {
     const prediction = await response.json();
 
     // If the prediction is complete and we have a design ID, update the design
-    if (designId && prediction.status === "succeeded") {
+    if (designId && design && prediction.status === "succeeded") {
       // Get the output URL from the prediction
       const outputUrl = prediction.output?.[0] || null;
 
-      if (outputUrl) {
-        // Update the design with the result URL
-        design = (await prisma.design.update({
-          where: { id: designId },
-          data: {
-            status: "completed",
-            resultUrl: outputUrl,
-          },
-        })) as Design;
+      if (outputUrl && !design.resultUrl) {
+        try {
+          // Fetch the image from the Replicate URL
+          const imageResponse = await fetch(outputUrl);
+          if (!imageResponse.ok)
+            throw new Error(
+              `Failed to fetch image: ${imageResponse.statusText}`
+            );
+
+          const imageBlob = await imageResponse.blob();
+
+          // Upload to Vercel Blob
+          const blob = await put(
+            `results/${design.userId}/${design.id}.jpg`,
+            imageBlob,
+            {
+              access: "public",
+            }
+          );
+
+          // Update the design with our own stored URL
+          design = (await prisma.design.update({
+            where: { id: designId },
+            data: {
+              status: "completed",
+              resultUrl: blob.url,
+            },
+          })) as Design;
+        } catch (blobError) {
+          console.error("Error storing result in Vercel Blob:", blobError);
+          // Fallback to using the Replicate URL directly
+          design = (await prisma.design.update({
+            where: { id: designId },
+            data: {
+              status: "completed",
+              resultUrl: outputUrl,
+            },
+          })) as Design;
+        }
       }
-    } else if (designId && prediction.status === "failed") {
+    } else if (designId && design && prediction.status === "failed") {
       // Update the design with the failed status
       design = (await prisma.design.update({
         where: { id: designId },

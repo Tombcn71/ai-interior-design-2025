@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { put } from "@vercel/blob";
 
 export async function POST(req: Request) {
   try {
@@ -31,17 +32,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // Process the image and create the design
-    // ... (image processing code)
+    if (!image) {
+      return NextResponse.json(
+        { message: "No image provided" },
+        { status: 400 }
+      );
+    }
 
-    // Create the design in the database with all fields
+    // Upload the image to Vercel Blob
+    const blob = await put(
+      `rooms/${session.user.id}/${Date.now()}-${image.name}`,
+      image,
+      {
+        access: "public",
+      }
+    );
+
+    // Create the design in the database
     const design = await prisma.design.create({
       data: {
         userId: session.user.id,
         roomType: roomType,
         style: style,
         description: description,
-        imageUrl: "https://example.com/placeholder.jpg", // Replace with actual image URL
+        imageUrl: blob.url,
         status: "pending",
       },
     });
@@ -56,25 +70,11 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Error creating design:", error);
     return NextResponse.json(
-      { message: "Failed to create design" },
+      {
+        message: "Failed to create design",
+        error: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }
-}
-
-// Helper function to get the Dutch name for a room type
-function getRoomTypeName(roomType: string): string {
-  const roomTypes: Record<string, string> = {
-    living_room: "Woonkamer",
-    bedroom: "Slaapkamer",
-    kitchen: "Keuken",
-    bathroom: "Badkamer",
-    dining_room: "Eetkamer",
-    office: "Thuiskantoor",
-    kids_room: "Kinderkamer",
-    hallway: "Gang",
-    other: "Andere Ruimte",
-  };
-
-  return roomTypes[roomType] || "Kamer";
 }
