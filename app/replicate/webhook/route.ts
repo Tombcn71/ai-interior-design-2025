@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
           const imageBlob = await response.blob();
 
-          // Upload to Vercel Blob
+          // Upload to Vercel Blob - simplified to avoid date issues
           const blob = await put(
             `results/${design.userId}/${design.id}.jpg`,
             imageBlob,

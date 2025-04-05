@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { uploadToBlob } from "@/lib/blob-client";
+import { put } from "@vercel/blob";
 
 export async function POST(req: Request) {
   console.log("Designs API called");
@@ -58,10 +58,17 @@ export async function POST(req: Request) {
 
       console.log("Uploading to Vercel Blob:", filename);
 
-      // Use our new Blob client
-      const blob = await uploadToBlob(filename, image);
+      // Use the put function directly without additional processing
+      const blob = await put(filename, image, {
+        access: "public",
+      });
 
-      console.log("Blob upload successful:", blob);
+      // Only log safe properties to avoid date serialization issues
+      console.log("Blob upload successful:", {
+        url: blob.url,
+        pathname: blob.pathname,
+      });
+
       imageUrl = blob.url;
     } catch (blobError) {
       console.error("Error uploading to Vercel Blob:", blobError);
