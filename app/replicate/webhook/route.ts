@@ -28,9 +28,9 @@ export async function POST(req: Request) {
     }
 
     // Update the design based on the prediction status
-    if (status === "succeeded") {
+    if (status === "succeeded" || status === "completed") {
       // Get the output URL from the prediction
-      const outputUrl = output?.[0] || null;
+      const outputUrl = Array.isArray(output) ? output[0] : output;
 
       if (outputUrl) {
         // Store the result in Vercel Blob for persistence
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
           const imageBlob = await response.blob();
 
-          // Upload to Vercel Blob - simplified to avoid date issues
+          // Upload to Vercel Blob
           const blob = await put(
             `results/${design.userId}/${design.id}.jpg`,
             imageBlob,
@@ -71,12 +71,20 @@ export async function POST(req: Request) {
           });
         }
       }
-    } else if (status === "failed") {
+    } else if (status === "failed" || error) {
       await prisma.design.update({
         where: { id: design.id },
         data: {
           status: "failed",
           errorMessage: error || "Generation failed",
+        },
+      });
+    } else if (status === "starting" || status === "start") {
+      // Update the design status to processing if it's starting
+      await prisma.design.update({
+        where: { id: design.id },
+        data: {
+          status: "processing",
         },
       });
     }

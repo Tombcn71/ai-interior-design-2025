@@ -82,6 +82,7 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "replicate": "^0.25.2"
   }
 }
